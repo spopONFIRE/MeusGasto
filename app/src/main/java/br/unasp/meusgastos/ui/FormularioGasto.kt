@@ -63,7 +63,7 @@ fun FormularioGasto(
             )
             Spacer(Modifier.width(10.dp))
             Button(
-                onClick = aoAdicionar,
+                onClick = { if (descricao.isNotBlank()) aoAdicionar() },
                 colors = ButtonDefaults.buttonColors(containerColor = Navy)
             ) {
                 Text("Adicionar")

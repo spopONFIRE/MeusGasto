@@ -38,24 +38,24 @@ Como restaurei o código: voltei a `val total: Double get() = gastosVisiveis.sum
 
 ## Experimento 4: Acoplamento à classe
 
-Experimento: fazer o ViewModel criar diretamente `GastoRepositoryMemoria` e remover o contrato do campo.
+Experimento: troquei o construtor do ViewModel para criar `GastoRepositoryMemoria()` dentro da própria classe, sem receber o contrato `GastoRepository`.
 
-Minha previsão: trocar para `GastoRepositoryDemo` passará a exigir edição do corpo do ViewModel.
+Minha previsão: trocar a fonte de dados para `GastoRepositoryDemo` passaria a exigir editar o corpo do ViewModel.
 
-O que observei: o ViewModel passou a depender da classe concreta, e para usar o Demo foi necessário alterar o código interno dele, não apenas o valor padrão do parâmetro.
+O que observei: com o repositório criado dentro da classe, o app funcionou normalmente. Ao trocar para `GastoRepositoryDemo()`, os 4 gastos de exemplo (Almoço no bandejão, Passagem de ônibus, Conta de luz e Cinema) apareceram na lista, mas foi preciso editar o corpo do ViewModel, e não só o valor padrão do parâmetro, como seria com o contrato `GastoRepository`.
 
-O que explica o resultado: sem a interface como fronteira, o ViewModel conhece a implementação. O contrato `GastoRepository` é o que permite trocar a fonte de dados sem mexer no restante.
+O que explica o resultado: sem a interface `GastoRepository` como fronteira, o ViewModel conhece a classe concreta e fica preso a ela. É o contrato que permite trocar a fonte de dados mexendo em um único ponto e sem alterar a lógica do ViewModel nem a interface.
 
-Como restaurei o código: voltei para `private val repositorio: GastoRepository = GastoRepositoryMemoria()`.
+Como restaurei o código: voltei ao construtor `class GastosViewModel(private val repositorio: GastoRepository = GastoRepositoryMemoria()) : ViewModel()`.
 
 ## Experimento 5: Regra na tela
 
-Experimento: validar a descrição dentro do `onClick` do botão.
+Experimento: troquei `onClick = aoAdicionar` por `onClick = { if (descricao.isNotBlank()) aoAdicionar() }` no botão de `FormularioGasto`, colocando a validação da descrição dentro da tela.
 
-Minha previsão: a regra fica presa à tela e precisaria ser duplicada para ser reutilizada ou testada.
+Minha previsão: a regra ficaria presa à tela e precisaria ser duplicada para ser reutilizada em outra tela ou testada.
 
-O que observei: a validação funcionou naquela tela, mas ficou misturada ao código visual, e outra tela precisaria repetir a mesma regra.
+O que observei: ao tocar em Adicionar com a descrição vazia, nenhuma mensagem de erro apareceu e o gasto também não foi adicionado. Antes da mudança, aparecia "Informe a descrição do gasto". A validação do valor (por exemplo `abc`) continuou mostrando a mensagem normalmente, porque essa regra continua no ViewModel.
 
-O que explica o resultado: regras pertencem ao ViewModel. Lá elas ficam em um único lugar, podem ser testadas sem interface e reutilizadas por qualquer View.
+O que explica o resultado: com a verificação no `onClick`, a função `adicionar()` do ViewModel nem é chamada quando a descrição está vazia, então o ViewModel não tem como definir a mensagem de `erro`. A regra ficou dividida entre dois lugares: a descrição na View e o valor no ViewModel. Isso gera comportamentos inconsistentes e obriga outra tela a repetir a mesma regra. No ViewModel, ela fica em um único lugar, pode ser testada sem interface e vale para qualquer View.
 
-Como restaurei o código: removi a validação do `onClick` e mantive `aoAdicionar = vm::adicionar`.
+Como restaurei o código: voltei para `onClick = aoAdicionar`
