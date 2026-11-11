@@ -2,16 +2,20 @@
 
 ## 1. Se a fonte de dados mudar de memória para outra implementação, que partes podem permanecer iguais? Quais partes ainda podem precisar de adaptação?
 
-Podem permanecer iguais a interface `GastoRepository`, toda a pasta `ui/` e as regras de validação do `GastosViewModel`, porque o ViewModel depende apenas do contrato (`listar`, `adicionar`, `remover`) e não de uma classe concreta. O experimento de trocar `GastoRepositoryMemoria` por `GastoRepositoryDemo` mostra isso: só o valor padrão do parâmetro do construtor muda.
+Podem continuar iguais a interface `GastoRepository`, toda a pasta `ui/` e as regras de validação do `GastosViewModel`. Isso acontece porque o ViewModel depende só do contrato (`listar`, `adicionar` e `remover`) e não de uma classe específica. Quando troquei `GastoRepositoryMemoria` por `GastoRepositoryDemo`, bastou mudar o valor padrão do parâmetro do construtor, e a tela continuou igual.
 
-Ainda podem precisar de adaptação os casos em que a nova fonte é diferente em natureza. Com Room, por exemplo, as operações passam a ser assíncronas (suspend functions ou Flow), então o contrato e a função `sincronizar` do ViewModel precisariam ser revistos, e seria preciso configurar o banco, as entidades e a criação do repositório (injeção de dependência ou fábrica de ViewModel).
+No experimento 4, quando tirei o contrato do construtor e criei o repositório dentro do ViewModel, a troca passou a exigir editar o corpo da classe. Isso mostra que é a interface que permite trocar a fonte de dados em um único ponto.
+
+Ainda podem precisar de adaptação os casos em que a nova fonte é diferente por natureza. Com Room, por exemplo, as operações são assíncronas (suspend functions ou Flow), então o contrato e a função `sincronizar` do ViewModel precisariam ser revistos. Também seria preciso configurar o banco e as entidades e decidir como o repositório é criado (injeção de dependência ou uma fábrica de ViewModel).
 
 ## 2. Por que total e quantidade são calculados a partir da lista visível? Descreva um erro concreto que surgiria se fossem atualizados manualmente.
 
-Porque são estado derivado: dependem apenas de `gastos` e `filtro`. Calculados em propriedades com `get()`, eles sempre refletem a lista que está na tela, sem que alguém precise lembrar de atualizá-los em cada ação (adicionar, remover, filtrar).
+Porque total e quantidade dependem só de `gastos` e de `filtro`. Quando são calculados com `get()`, eles sempre refletem o que está na tela, e ninguém precisa lembrar de atualizá-los a cada ação (adicionar, remover ou filtrar).
 
-Se `total` fosse uma variável atualizada só ao adicionar, ao remover um gasto de R$ 32,00 a lista diminuiria mas o total continuaria o mesmo. Ao trocar o filtro para "Lazer", a lista mostraria só os gastos de lazer, mas o total continuaria somando todas as categorias. A tela exibiria informação inconsistente.
+No experimento 3, guardei o total em uma variável atualizada só ao adicionar. Adicionei 10 e 20 e o total mostrou R$ 30,00. Ao remover o de 20, a lista ficou com um item, mas o total continuou em R$ 30,00. Ao filtrar por uma categoria sem gastos, como Transporte, o total também continuou em R$ 30,00. Com o repositório de exemplo, os 4 gastos iniciais apareceram na lista, mas o total ficou em zero. Em todos os casos, a tela mostrava um número que não batia com a lista.
 
 ## 3. O que os componentes sem estado conseguem fazer nos previews que seria menos simples com dependência direta de um ViewModel?
 
-Como recebem apenas valores e callbacks, eles podem ser desenhados isoladamente com dados de exemplo e lambdas vazias (`{}`). Dá para ver o formulário com mensagem de erro (`erro = "O valor precisa ser um número"`), o resumo vazio ou preenchido e a etiqueta ativa ou inativa sem executar o app, sem digitar nada e sem provocar a validação real. Com dependência direta de um ViewModel, seria preciso criar e preparar uma instância dele (e do repositório) para cada situação, e o preview ficaria acoplado à lógica.
+Esses componentes recebem apenas valores e callbacks, então podem ser desenhados sozinhos, com dados de exemplo e funções vazias (`{}`). Dá para ver o formulário com a mensagem de erro (`erro = "O valor precisa ser um número"`), o resumo vazio ou preenchido e a etiqueta ativa ou inativa, sem rodar o app, sem digitar nada e sem provocar a validação de verdade.
+
+Se o componente dependesse diretamente de um ViewModel, seria preciso criar e preparar uma instância dele, com repositório e estado, para cada situação que eu quisesse ver. O preview ficaria preso à lógica do app.
