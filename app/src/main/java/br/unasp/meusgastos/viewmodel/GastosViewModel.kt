@@ -8,11 +8,11 @@ import androidx.lifecycle.ViewModel
 import br.unasp.meusgastos.model.Categoria
 import br.unasp.meusgastos.model.Gasto
 import br.unasp.meusgastos.model.GastoRepository
-import br.unasp.meusgastos.model.GastoRepositoryDemo
 import br.unasp.meusgastos.model.GastoRepositoryMemoria
 
-class GastosViewModel : ViewModel() {
-    private val repositorio = GastoRepositoryDemo()
+class GastosViewModel(
+    private val repositorio: GastoRepository = GastoRepositoryMemoria()
+) : ViewModel() {
 
     var descricao by mutableStateOf("")
         private set
@@ -35,8 +35,8 @@ class GastosViewModel : ViewModel() {
     val gastosVisiveis: List<Gasto>
         get() = if (filtro == null) gastos else gastos.filter { it.categoria == filtro }
 
-    var total by mutableStateOf(0.0)
-        private set
+    val total: Double
+        get() = gastosVisiveis.sumOf { it.valor }
 
     val quantidade: Int
         get() = gastosVisiveis.size
@@ -76,7 +76,6 @@ class GastosViewModel : ViewModel() {
 
         repositorio.adicionar(descricao.trim(), valor!!, categoriaSelecionada)
         sincronizar()
-        total += valor
 
         descricao = ""
         valorTexto = ""
