@@ -2,10 +2,7 @@ package br.unasp.meusgastos.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -26,41 +23,40 @@ fun TelaGastos(
     vm: GastosViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(Fundo)
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Meus Gastos", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Navy)
+        item {
+            Text("Meus Gastos", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Navy)
+        }
 
-        Spacer(Modifier.height(14.dp))
+        item {
+            FormularioGasto(
+                descricao = vm.descricao,
+                valorTexto = vm.valorTexto,
+                categoria = vm.categoriaSelecionada,
+                erro = vm.erro,
+                aoDigitarDescricao = vm::aoDigitarDescricao,
+                aoDigitarValor = vm::aoDigitarValor,
+                aoSelecionarCategoria = vm::aoSelecionarCategoria,
+                aoAdicionar = vm::adicionar
+            )
+        }
 
-        FormularioGasto(
-            descricao = vm.descricao,
-            valorTexto = vm.valorTexto,
-            categoria = vm.categoriaSelecionada,
-            erro = vm.erro,
-            aoDigitarDescricao = vm::aoDigitarDescricao,
-            aoDigitarValor = vm::aoDigitarValor,
-            aoSelecionarCategoria = vm::aoSelecionarCategoria,
-            aoAdicionar = vm::adicionar
-        )
+        item {
+            FiltroCategorias(selecionada = vm.filtro, aoFiltrar = vm::aoFiltrar)
+        }
 
-        Spacer(Modifier.height(16.dp))
+        item {
+            ResumoTotal(total = vm.total, quantidade = vm.quantidade)
+        }
 
-        FiltroCategorias(selecionada = vm.filtro, aoFiltrar = vm::aoFiltrar)
-
-        Spacer(Modifier.height(12.dp))
-
-        ResumoTotal(total = vm.total, quantidade = vm.quantidade)
-
-        Spacer(Modifier.height(12.dp))
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(vm.gastosVisiveis) { gasto ->
-                LinhaGasto(gasto = gasto, aoRemover = { vm.remover(gasto.id) })
-            }
+        items(vm.gastosVisiveis, key = { it.id }) { gasto ->
+            LinhaGasto(gasto = gasto, aoRemover = { vm.remover(gasto.id) })
         }
     }
 }
