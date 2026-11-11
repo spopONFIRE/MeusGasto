@@ -2,39 +2,39 @@
 
 ## Experimento 1: Construir ViewModel na tela
 
-Experimento: trocar `viewModel()` por `GastosViewModel()` em `TelaGastos`.
+Experimento: troquei `viewModel()` por `GastosViewModel()` na assinatura de `TelaGastos`.
 
-Minha previsão: a instância deixa de ser gerenciada pelo ViewModelStore e pode ser recriada, perdendo o estado (por exemplo, ao girar a tela).
+Minha previsão: a instância criada diretamente não seria gerenciada pelo ViewModelStore e, ao girar a tela, o estado seria perdido.
 
-O que observei: ao girar a tela, os gastos cadastrados e os campos digitados foram perdidos, voltando ao estado inicial. Com `viewModel()` eles permanecem.
+O que observei: ao girar o celular para a horizontal, a tela não rolava (a lista ficava fora da área visível), então não consegui ver os itens e não consegui confirmar se os gastos tinham sido perdidos ou só estavam escondidos. Por isso não afirmo o resultado observado deste experimento.
 
-O que explica o resultado: `viewModel()` obtém uma instância associada ao ciclo de vida da tela, que sobrevive a mudanças de configuração. Criar o ViewModel diretamente não passa pelo ViewModelStore, então uma nova instância (com repositório novo e vazio) é criada.
+O que explica o resultado: pela documentação do Android, uma rotação recria a Activity. Um ViewModel obtido com `viewModel()` fica guardado no ViewModelStore e sobrevive à recriação. Um ViewModel criado diretamente com `GastosViewModel()` não passa pelo ViewModelStore, então a expectativa é que uma nova instância, com repositório vazio, seja criada quando a tela é recriada. Isso é a explicação conceitual, e eu não consegui comprová-la no celular por causa do problema de rolagem.
 
-Como restaurei o código: voltei a chamada para `vm: GastosViewModel = viewModel()`.
+Como restaurei o código: usei `git restore` e voltei a assinatura para `vm: GastosViewModel = viewModel()`.
 
 ## Experimento 2: Lista não observável
 
-Experimento: trocar `mutableStateListOf` por `mutableListOf` em `_gastos`.
+Experimento: troquei `mutableStateListOf<Gasto>()` por `mutableListOf<Gasto>()` em `_gastos`.
 
-Minha previsão: a lista não vai redesenhar após adicionar ou remover.
+Minha previsão: a lista não seria redesenhada depois de adicionar ou remover um gasto.
 
-O que observei: ao adicionar ou remover, a lista não atualizou de imediato; só mudou quando outro estado observável (como um campo de texto) provocou recomposição.
+O que observei: ao remover um gasto, ele saiu da lista, mas o valor do total continuou o mesmo. Não consegui separar esse efeito do experimento 3 (total manual), então não posso afirmar que a lista deixou de atualizar por causa do `mutableListOf`.
 
-O que explica o resultado: `mutableListOf` não notifica o Compose sobre alterações. Só `mutableStateListOf` registra as mudanças e dispara a recomposição dos Composables que a leem.
+O que explica o resultado: pela documentação do Compose, só estados observáveis, como `mutableStateOf` e `mutableStateListOf`, avisam o Compose quando mudam. Uma `mutableListOf` comum não avisa, então a tela só seria redesenhada se outro estado observável mudasse, como um campo de texto. Isso é a explicação conceitual, e não um resultado que eu tenha isolado no celular.
 
-Como restaurei o código: voltei para `mutableStateListOf<Gasto>()`.
+Como restaurei o código: usei `git restore` e voltei para `mutableStateListOf<Gasto>()`.
 
 ## Experimento 3: Total manual
 
-Experimento: guardar `total` em uma variável e atualizá-la somente ao adicionar.
+Experimento: troquei o total calculado (`val total get() = gastosVisiveis.sumOf { it.valor }`) por uma variável `var total` que só era atualizada dentro de `adicionar()`.
 
-Minha previsão: o total ficará incorreto ao remover e ao filtrar.
+Minha previsão: o total ficaria errado ao remover um gasto e ao filtrar por categoria.
 
-O que observei: ao remover um item o total não diminuiu, e ao filtrar por uma categoria o total continuou somando todos os gastos, divergindo da lista exibida.
+O que observei: adicionei um gasto de 10 e outro de 20 e o total mostrou R$ 30,00. Ao remover o de 20, a lista ficou com um item, mas o total continuou em R$ 30,00. Ao filtrar por uma categoria sem nenhum gasto, como Transporte, o total continuou em R$ 30,00. Depois, com o repositório de exemplo, os 4 gastos iniciais apareceram na lista, mas o total não os somou.
 
-O que explica o resultado: um valor armazenado precisa ser mantido em todos os caminhos que alteram os dados. Um caminho esquecido gera inconsistência. O valor derivado com `get()` é recalculado sempre que lido.
+O que explica o resultado: o total passou a ser um valor guardado, e só o caminho de adicionar o atualizava. Remover, filtrar e carregar os dados iniciais não passavam por ele, então ele ficou desatualizado. Calculado a partir de `gastosVisiveis`, o total acompanha a lista e o filtro automaticamente.
 
-Como restaurei o código: voltei a `val total: Double get() = gastosVisiveis.sumOf { it.valor }`.
+Como restaurei o código: usei `git restore` e voltei à propriedade `val total: Double get() = gastosVisiveis.sumOf { it.valor }`, sem a linha `total += valor`.
 
 ## Experimento 4: Acoplamento à classe
 
@@ -42,11 +42,11 @@ Experimento: troquei o construtor do ViewModel para criar `GastoRepositoryMemori
 
 Minha previsão: trocar a fonte de dados para `GastoRepositoryDemo` passaria a exigir editar o corpo do ViewModel.
 
-O que observei: com o repositório criado dentro da classe, o app funcionou normalmente. Ao trocar para `GastoRepositoryDemo()`, os 4 gastos de exemplo (Almoço no bandejão, Passagem de ônibus, Conta de luz e Cinema) apareceram na lista, mas foi preciso editar o corpo do ViewModel, e não só o valor padrão do parâmetro, como seria com o contrato `GastoRepository`.
+O que observei: com o repositório criado dentro da classe, o app funcionou. Ao trocar para `GastoRepositoryDemo()`, os 4 gastos de exemplo (Almoço no bandejão, Passagem de ônibus, Conta de luz e Cinema) apareceram na lista, mas foi preciso editar o corpo do ViewModel, e não o valor padrão de um parâmetro.
 
-O que explica o resultado: sem a interface `GastoRepository` como fronteira, o ViewModel conhece a classe concreta e fica preso a ela. É o contrato que permite trocar a fonte de dados mexendo em um único ponto e sem alterar a lógica do ViewModel nem a interface.
+O que explica o resultado: sem a interface `GastoRepository` como fronteira, o ViewModel conhece a classe concreta e fica preso a ela. Com o contrato no construtor, a troca seria feita em um único ponto, no valor padrão do parâmetro.
 
-Como restaurei o código: voltei ao construtor `class GastosViewModel(private val repositorio: GastoRepository = GastoRepositoryMemoria()) : ViewModel()`.
+Como restaurei o código: usei `git restore` e voltei ao construtor `class GastosViewModel(private val repositorio: GastoRepository = GastoRepositoryMemoria()) : ViewModel()`.
 
 ## Experimento 5: Regra na tela
 
@@ -54,8 +54,12 @@ Experimento: troquei `onClick = aoAdicionar` por `onClick = { if (descricao.isNo
 
 Minha previsão: a regra ficaria presa à tela e precisaria ser duplicada para ser reutilizada em outra tela ou testada.
 
-O que observei: ao tocar em Adicionar com a descrição vazia, nenhuma mensagem de erro apareceu e o gasto também não foi adicionado. Antes da mudança, aparecia "Informe a descrição do gasto". A validação do valor (por exemplo `abc`) continuou mostrando a mensagem normalmente, porque essa regra continua no ViewModel.
+O que observei: ao tocar em Adicionar com a descrição vazia, nenhuma mensagem de erro apareceu e o gasto também não foi adicionado. Antes da mudança, aparecia "Informe a descrição do gasto".
 
-O que explica o resultado: com a verificação no `onClick`, a função `adicionar()` do ViewModel nem é chamada quando a descrição está vazia, então o ViewModel não tem como definir a mensagem de `erro`. A regra ficou dividida entre dois lugares: a descrição na View e o valor no ViewModel. Isso gera comportamentos inconsistentes e obriga outra tela a repetir a mesma regra. No ViewModel, ela fica em um único lugar, pode ser testada sem interface e vale para qualquer View.
+O que explica o resultado: com a verificação no `onClick`, a função `adicionar()` do ViewModel nem é chamada quando a descrição está vazia, então o ViewModel não tem como definir a mensagem de `erro`. A regra fica dividida entre a View e o ViewModel, e outra tela teria de repetir a mesma verificação. No ViewModel, ela fica em um único lugar.
 
-Como restaurei o código: voltei para `onClick = aoAdicionar`
+Como restaurei o código: usei `git restore` e voltei para `onClick = aoAdicionar`.
+
+## Observação extra: rolagem na horizontal
+
+Ao girar o celular para a horizontal, a tela original não rolava, e os itens adicionados ficavam fora da área visível. A causa está no código: a `LazyColumn` estava dentro de uma `Column` fixa, que não rola. Troquei por uma única `LazyColumn` com título, formulário, filtro, resumo e itens, e depois disso testei no celular e a tela passou a funcionar.
